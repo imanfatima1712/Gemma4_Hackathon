@@ -364,3 +364,56 @@ if st.button("Run Evaluation"):
         "Time saved is an illustrative estimate, not a measured result. "
         "Accuracy is calculated against the sample labels."
     )
+
+
+st.subheader("🖼️ Visual Ticket Analysis")
+
+uploaded_image = st.file_uploader(
+    "Upload a customer error screenshot or product photo",
+    type=["png", "jpg", "jpeg"]
+)
+
+image_complaint = st.text_area(
+    "Describe the issue",
+    placeholder="My app shows an error when I log in..."
+)
+
+if st.button("Analyze Image with Gemma"):
+    if uploaded_image is None:
+        st.warning("Please upload an image.")
+    elif client is None:
+        st.error("Gemma API client is not configured.")
+    else:
+        try:
+            from google.genai import types
+
+            image_part = types.Part.from_bytes(
+                data=uploaded_image.getvalue(),
+                mime_type=uploaded_image.type
+            )
+
+            prompt = f"""
+            You are a customer support assistant.
+            Analyze the uploaded image together with this complaint:
+            {image_complaint}
+
+            Explain:
+            1. What is visibly shown in the image?
+            2. What customer issue might it indicate?
+            3. Suggested support category.
+            4. Suggested next steps for the customer.
+
+            Do not guess details that are not visible.
+            """
+
+            with st.spinner("Analyzing image with Gemma..."):
+                response = client.models.generate_content(
+                    model="gemma-4-31b-it",
+                    contents=[prompt, image_part]
+                )
+
+            st.subheader("Gemma's Visual Analysis")
+            st.write(response.text)
+
+        except Exception as e:
+            st.error(f"Image analysis failed: {e}")
